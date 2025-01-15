@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity"
+    android:orientation="vertical">
+    <TextView
+        android:id="@+id/rangeDbTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="0db"/>
+    <TextView
+        android:id="@+id/statusTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="searching..."/>
+    <ProgressBar
+        android:id="@+id/searchIndicator"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <Button
+        android:id="@+id/savedPcTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="connect to: ..." />
+
+    <Button
+        android:id="@+id/stopBtn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Stop Connection"
+        />
+    <Button
+        android:id="@+id/stopServiceBtn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Stop BLE Service"
+        />
+    <Button
+        android:id="@+id/pairingBtn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Select PC"
+        />
+</LinearLayout>
