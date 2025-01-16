@@ -1,49 +1,86 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.drawerlayout.widget.DrawerLayout
+    android:id="@+id/drawer_layout"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".MainActivity"
-    android:orientation="vertical">
-    <TextView
-        android:id="@+id/rangeDbTextView"
+    android:orientation="vertical"
+    android:background="@color/secondary_blue">
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/my_toolbar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="0db"/>
-    <TextView
-        android:id="@+id/statusTextView"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/primary_blue"
+        android:elevation="4dp"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar" />
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="searching..."/>
-    <ProgressBar
-        android:id="@+id/searchIndicator"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="bottom">
+        <include
+            android:id="@+id/circular_range_view"
+            layout="@layout/circular_view"/>
+        <TextView
+            android:id="@+id/statusTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="searching..."
+            android:textColor="@color/black"
+            android:background="@drawable/rounded_badge_connected"
+            android:padding="10dp"
+            android:layout_gravity="center"
+            android:layout_marginTop="20dp"/>
+        <ProgressBar
+            android:id="@+id/searchIndicatorProgressbar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:indeterminate="false"
+            android:layout_marginHorizontal="10dp"
+            android:layout_marginTop="20dp"/>
 
-    <Button
-        android:id="@+id/savedPcTextView"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="connect to: ..." />
+        <Button
+            android:id="@+id/connectToSavedPcButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="connect to: Alwin Power PC "
+            style="@style/ButtonSecondaryStyle"
+            android:textColor="@color/black"
+            android:layout_marginHorizontal="10dp"/>
+        <Button
+            android:id="@+id/stopServiceBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Stop Connection"
+            style="@style/ButtonPrimaryStyle"
+            android:textColor="@color/black"
+            android:layout_marginHorizontal="10dp"
+            />
+        <Button
+            android:id="@+id/pairingBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Select PC"
+            style="@style/ButtonPrimaryStyle"
+            android:textColor="@color/black"
+            android:layout_marginHorizontal="10dp"
+            />
+    </LinearLayout>
 
-    <Button
-        android:id="@+id/stopBtn"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Stop Connection"
-        />
-    <Button
-        android:id="@+id/stopServiceBtn"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Stop BLE Service"
-        />
-    <Button
-        android:id="@+id/pairingBtn"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Select PC"
-        />
 </LinearLayout>
+    <com.google.android.material.navigation.NavigationView
+        android:id="@+id/nav_view"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:background="@color/primary_blue"
+        app:headerLayout="@layout/nav_header"
+        app:menu="@menu/nav_menu"/>
+</androidx.drawerlayout.widget.DrawerLayout>

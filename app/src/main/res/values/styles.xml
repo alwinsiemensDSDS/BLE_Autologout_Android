@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="ButtonPrimaryStyle" parent="Widget.MaterialComponents.Button">
+        <item name="cornerRadius">12dp</item>
+        <item name="backgroundTint">#B0B0B0</item> <!-- Grey color -->
+        <item name="android:padding">20dp</item>
+    </style>
+    <style name="ButtonSecondaryStyle" parent="Widget.MaterialComponents.Button">
+        <item name="cornerRadius">12dp</item>
+        <item name="backgroundTint">#4D4848</item> <!-- Grey color -->
+        <item name="android:padding">20dp</item>
+    </style>
+</resources>

@@ -49,7 +49,7 @@ public class BLE_Manager extends BleManager {
         disconnect();
         distanceMeasureDataPoint = null;
         Intent broadcastIntent = new Intent("ConnectionStatusChanged");
-        broadcastIntent.putExtra("ConnectionStatus", "Error");
+        broadcastIntent.putExtra("ConnectionStatus", "disconnected");
         getContext().sendBroadcast(broadcastIntent);
         Intent stopIntent = new Intent(getContext(), BLE_ForegroundService.class);
         stopIntent.setAction(BLE_ForegroundService.Actions.StartLowPowerScanningMode.toString());
@@ -61,6 +61,10 @@ public class BLE_Manager extends BleManager {
     public void writeRSSIStrength(Context context){
 
         try {
+            if(!MainActivity.isServiceRunningInForeground(context, BLE_ForegroundService.class)){
+                onServicesInvalidated();
+                return;
+            }
             readRssi()
                     .with( (device, rssi1) ->
                             {

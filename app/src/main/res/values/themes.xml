@@ -3,6 +3,9 @@
     <style name="Base.Theme.BLE_Autologout_Android" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Customize your light theme here. -->
         <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <item name="colorPrimary">@color/primary_blue</item>
+        <item name="colorPrimaryDark">@color/primary_blue</item>
+        <item name="colorAccent">@color/primary_blue</item>
     </style>
 
     <style name="Theme.BLE_Autologout_Android" parent="Base.Theme.BLE_Autologout_Android" />

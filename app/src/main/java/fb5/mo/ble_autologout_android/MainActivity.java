@@ -26,54 +26,93 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.os.ParcelUuid;
 import android.util.Log;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.content.res.AppCompatResources;
+import androidx.appcompat.widget.Toolbar;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
+import androidx.core.view.GravityCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
+
+import com.google.android.material.navigation.NavigationView;
 
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.regex.Pattern;
 
-public class MainActivity extends AppCompatActivity {
-
-
-    //
-
-    // Stat
+public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
 
     // ------------------------------- VIEW ELEMENTS --------------------------------------------
     TextView statusTextView;
-    Button pairingButton;
-    Button stopConnectionBtn;
     TextView rangeDbTextView;
+
+    ImageView notConnectedImageView;
+
+    ProgressBar searchIndicatorProgressbar;
+
+    Button pairingButton;
     Button stopServiceButton;
+    Button savedPCConnectButton;
+
+    DrawerLayout drawerLayout;
+    ConstraintLayout circularBackground;
 
     BroadcastReceiver ConnectionStatusReceiver;
     BroadcastReceiver RemoteRSSIReceiver;
 
-    private void initViewElements(){
-        pairingButton = findViewById(R.id.pairingBtn);
-        statusTextView = findViewById(R.id.statusTextView);
-        stopConnectionBtn = findViewById(R.id.stopBtn);
-        rangeDbTextView = findViewById(R.id.rangeDbTextView);
-        stopServiceButton = findViewById(R.id.stopServiceBtn);
 
+    private void initViewElements(){
+        statusTextView = findViewById(R.id.statusTextView);
+        rangeDbTextView = findViewById(R.id.rangeDbTextView);
+        notConnectedImageView = findViewById(R.id.not_connected_image_view);
+        searchIndicatorProgressbar = findViewById(R.id.searchIndicatorProgressbar);
+        pairingButton = findViewById(R.id.pairingBtn);
+        savedPCConnectButton = findViewById(R.id.connectToSavedPcButton);
+        stopServiceButton = findViewById(R.id.stopServiceBtn);
+        notConnectedImageView = findViewById(R.id.not_connected_image_view);
+        circularBackground = findViewById(R.id.circularBackground);
+        Toolbar myToolbar = (Toolbar) findViewById(R.id.my_toolbar);
+        drawerLayout = findViewById(R.id.drawer_layout);
+
+        // Toolbar Init
+        setSupportActionBar(myToolbar);
+        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
+                this, drawerLayout, myToolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+        drawerLayout.addDrawerListener(toggle);
+        toggle.syncState();
+
+        // NavigationView Init
+        NavigationView navigationView = findViewById(R.id.nav_view);
+        navigationView.setNavigationItemSelectedListener(this);
+
+        // Circular Range Indicator Init
+        circularBackground.setBackground(AppCompatResources.getDrawable(this, R.drawable.circle_background_grey));
+        notConnectedImageView.setVisibility(View.VISIBLE);
+        rangeDbTextView.setVisibility(View.INVISIBLE);
+
+        // Statustext init
+        statusTextView.setBackground(AppCompatResources.getDrawable(this, R.drawable.rounded_badge_not_connected));
+
+        // Buttons Init
         pairingButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                //Stop it, because we want to renew our Paired PC connection
-                StopBLEForegroundService();
                 CompanionPairingProcess();
             }
         });
@@ -82,12 +121,41 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 StopBLEForegroundService();
+                stopServiceButton.setVisibility(View.INVISIBLE);
+                pairingButton.setVisibility(View.VISIBLE);
+                savedPCConnectButton.setVisibility(View.VISIBLE);
+
+                circularBackground.setBackground(AppCompatResources.getDrawable(view.getContext(), R.drawable.circle_background_grey));
+                notConnectedImageView.setVisibility(View.VISIBLE);
+                rangeDbTextView.setVisibility(View.INVISIBLE);
+
+                statusTextView.setBackground(AppCompatResources.getDrawable(getApplicationContext(), R.drawable.rounded_badge_not_connected));
+                statusTextView.setText("not connected");
+            }
+        });
+
+        savedPCConnectButton.setVisibility(View.INVISIBLE);
+        savedPCConnectButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (!isServiceRunningInForeground(view.getContext(), BLE_ForegroundService.class)){
+                    StartBLEForegroundService();
+                }
+
             }
         });
     }
 
-    // ------------------------------- LIFE-CYCLE METHODEN ---------------------------------------
 
+    // ------------------------------- LIFE-CYCLE METHODEN ---------------------------------------
+    @Override
+    public void onBackPressed() {
+        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+            drawerLayout.closeDrawer(GravityCompat.START);
+        } else {
+            super.onBackPressed();
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -106,39 +174,18 @@ public class MainActivity extends AppCompatActivity {
                 new String[]{Manifest.permission.BLUETOOTH_SCAN},
                 1);
 
-
-        // Broadcast Receivers for getting Events from Foreground BLE Service
-
-        ConnectionStatusReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                // Get extra data included in the Intent
-                String message = intent.getStringExtra("ConnectionStatus");
-                statusTextView.setText(message);
-                // Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
-            }
-        };
-        registerReceiver(ConnectionStatusReceiver, new IntentFilter("ConnectionStatusChanged"));
-
-        RemoteRSSIReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                // Get extra data included in the Intent
-                int RSSI = intent.getIntExtra("RemoteRSSI", 0);
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        rangeDbTextView.setText(""+RSSI);
-                    }
-                });
-            }
-        };
-        registerReceiver(RemoteRSSIReceiver, new IntentFilter("RemoteRSSIChanged"));
-
-
+        // Auto-Start of BLE Service
         if (isOnePairedPcSaved()){
-            // Start BLE Service when it is not already running
-            StartBLEForegroundService();
+            savedPCConnectButton.setVisibility(View.VISIBLE);
+            SharedPreferences sharedPrefs = getApplicationContext().getSharedPreferences("AUTOLOGOUT_APP", Context.MODE_PRIVATE);
+            String SavedPCName = sharedPrefs.getString("SAVED_PC_NAME", null);
+            if(SavedPCName != null){
+                savedPCConnectButton.setText("connect with: " + SavedPCName);
+            }
+            if (!isServiceRunningInForeground(this, BLE_ForegroundService.class)) {
+                StartBLEForegroundService();
+            }
+
         }
 
     }
@@ -150,6 +197,8 @@ public class MainActivity extends AppCompatActivity {
         unregisterReceiver(RemoteRSSIReceiver);
     }
 
+    // ------------------------------------------------------------------------------------
+
     public boolean isOnePairedPcSaved(){
         SharedPreferences sharedPrefs = getApplicationContext().getSharedPreferences("AUTOLOGOUT_APP", Context.MODE_PRIVATE);
         String SavedMacAdress = sharedPrefs.getString("SAVED_PC_MACADRESS", null);
@@ -157,7 +206,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void StartBLEForegroundService(){
-        if (!isServiceRunningInForeground(this, BLE_ForegroundService.class)){
+
+            // View
+            stopServiceButton.setVisibility(View.VISIBLE);
+            pairingButton.setVisibility(View.INVISIBLE);
+            savedPCConnectButton.setVisibility(View.INVISIBLE);
+
             Intent serviceIntent = new Intent(this, BLE_ForegroundService.class);
             serviceIntent.setAction(BLE_ForegroundService.Actions.Start.toString());
             ContextCompat.startForegroundService(this, serviceIntent);
@@ -167,8 +221,29 @@ public class MainActivity extends AppCompatActivity {
                 public void onReceive(Context context, Intent intent) {
                     // Get extra data included in the Intent
                     String message = intent.getStringExtra("ConnectionStatus");
+                    switch (message){
+                        case "searching...":
+                            statusTextView.setBackground(AppCompatResources.getDrawable(getApplicationContext(), R.drawable.rounded_badge_not_connected));
+                            searchIndicatorProgressbar.setVisibility(View.VISIBLE);
+                            circularBackground.setBackground(AppCompatResources.getDrawable(context, R.drawable.circle_background_grey));
+                            notConnectedImageView.setVisibility(View.VISIBLE);
+                            rangeDbTextView.setVisibility(View.INVISIBLE);
+                            break;
+                        case "disconnected":
+                            statusTextView.setBackground(AppCompatResources.getDrawable(getApplicationContext(), R.drawable.rounded_badge_not_connected));
+                            searchIndicatorProgressbar.setVisibility(View.INVISIBLE);
+                            circularBackground.setBackground(AppCompatResources.getDrawable(context, R.drawable.circle_background_grey));
+                            notConnectedImageView.setVisibility(View.VISIBLE);
+                            rangeDbTextView.setVisibility(View.INVISIBLE);
+                            break;
+                        case "connected":
+                            statusTextView.setBackground(AppCompatResources.getDrawable(getApplicationContext(), R.drawable.rounded_badge_connected));
+                            searchIndicatorProgressbar.setVisibility(View.INVISIBLE);
+                            circularBackground.setBackground(AppCompatResources.getDrawable(context, R.drawable.circle_background_blue));
+                            notConnectedImageView.setVisibility(View.INVISIBLE);
+                            rangeDbTextView.setVisibility(View.VISIBLE);
+                    }
                     statusTextView.setText(message);
-                    // Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
                 }
             };
             registerReceiver(ConnectionStatusReceiver, new IntentFilter("ConnectionStatusChanged"));
@@ -187,15 +262,20 @@ public class MainActivity extends AppCompatActivity {
                 }
             };
             registerReceiver(RemoteRSSIReceiver, new IntentFilter("RemoteRSSIChanged"));
-        }
     }
 
     public void StopBLEForegroundService(){
-        Intent serviceIntent = new Intent(this, BLE_ForegroundService.class);
-        serviceIntent.setAction(BLE_ForegroundService.Actions.Stop.toString());
-        ContextCompat.startForegroundService(this, serviceIntent);
-        unregisterReceiver(ConnectionStatusReceiver);
-        unregisterReceiver(RemoteRSSIReceiver);
+        {
+            Intent serviceIntent = new Intent(this, BLE_ForegroundService.class);
+            serviceIntent.setAction(BLE_ForegroundService.Actions.Stop.toString());
+            ContextCompat.startForegroundService(this, serviceIntent);
+//            unregisterReceiver(ConnectionStatusReceiver);
+//            unregisterReceiver(RemoteRSSIReceiver);
+            stopServiceButton.setVisibility(View.INVISIBLE);
+            pairingButton.setVisibility(View.VISIBLE);
+            savedPCConnectButton.setVisibility(View.VISIBLE);
+        }
+
     }
 
     public static boolean isServiceRunningInForeground(Context context, Class<?> serviceClass) {
@@ -226,26 +306,6 @@ public class MainActivity extends AppCompatActivity {
     private static final String DISTANCE_SERVICE_UUID = "12345678-1234-1234-1234-123456789abc";
 
     private static final int SELECT_DEVICE_REQUEST_CODE = 0;
-
-
-//    // after bindService() in OnStart()
-//    private ServiceConnection serviceConnection = new ServiceConnection() {
-//        @Override
-//        public void onServiceConnected(ComponentName name, IBinder service) {
-//            bleService = ((BLEService.LocalBinder) service).getService();
-//            if (bleService != null) {
-//                // call functions on service to check connection and connect to devices
-//                bleService.initialize();
-//            }
-//
-//        }
-//
-//        @Override
-//        public void onServiceDisconnected(ComponentName name) {
-//            bleService = null;
-//        }
-//    };
-
 
 
     public void CompanionPairingProcess(){
@@ -285,7 +345,6 @@ public class MainActivity extends AppCompatActivity {
 
                     @Override
                     public void onAssociationCreated(AssociationInfo associationInfo) {
-
                         int associationId = associationInfo.getId();
                         MacAddress macAddress = associationInfo.getDeviceMacAddress();
                         assert macAddress != null;
@@ -294,7 +353,10 @@ public class MainActivity extends AppCompatActivity {
                         Context context = getApplicationContext();
                         SharedPreferences sharedPrefs = context.getSharedPreferences("AUTOLOGOUT_APP",Context.MODE_PRIVATE);
                         sharedPrefs.edit().putString("SAVED_PC_MACADRESS", macAddress.toString().toUpperCase()).apply();
+                        sharedPrefs.edit().putString("SAVED_PC_NAME", associationInfo.getDisplayName().toString().toUpperCase()).apply();
 
+                        savedPCConnectButton.setVisibility(View.VISIBLE);
+                        savedPCConnectButton.setText("connect with: " + associationInfo.getDisplayName());
                     }
 
                     @Override
@@ -336,5 +398,23 @@ public class MainActivity extends AppCompatActivity {
         } else {
             super.onActivityResult(requestCode, resultCode, data);
         }
+    }
+
+    @Override
+    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+//        switch (item.getItemId()) {
+//            case R.id.nav_home:
+//                // Handle "Home" action
+//                break;
+//            case R.id.nav_settings:
+//                // Handle "Settings" action
+//                break;
+//            case R.id.nav_about:
+//                // Handle "About" action
+//                break;
+//        }
+
+        drawerLayout.closeDrawer(GravityCompat.START);
+        return true;
     }
 }

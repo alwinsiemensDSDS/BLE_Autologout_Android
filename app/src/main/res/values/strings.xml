@@ -1,3 +1,5 @@
 <resources>
-    <string name="app_name">BLE_Autologout_Android</string>
+    <string name="app_name">BLE Autologout</string>
+    <string name="navigation_drawer_open">Open Navigation Drawer</string>
+    <string name="navigation_drawer_close">Close Navigation Drawer</string>
 </resources>

@@ -72,7 +72,7 @@ public class BLE_ForegroundService extends Service {
                                 .enqueue();
 
                         Intent broadcastIntent = new Intent("ConnectionStatusChanged");
-                        broadcastIntent.putExtra("ConnectionStatus", "Connected");
+                        broadcastIntent.putExtra("ConnectionStatus", "connected");
                         sendBroadcast(broadcastIntent);
                     }
                 }
@@ -89,9 +89,7 @@ public class BLE_ForegroundService extends Service {
             startLowPowerScanning();
         }
         else if (Actions.Stop.toString().equals(intent.getAction())){
-            Intent broadcastIntent = new Intent("ConnectionStatusChanged");
-            broadcastIntent.putExtra("ConnectionStatus", "Stopped");
-            sendBroadcast(broadcastIntent);
+
             try{
                 if (scanning){
                     scanner.stopScan(scanCallback);
@@ -101,6 +99,9 @@ public class BLE_ForegroundService extends Service {
             }catch (Exception e){
 
             }
+            Intent broadcastIntent = new Intent("ConnectionStatusChanged");
+            broadcastIntent.putExtra("ConnectionStatus", "disconnected");
+            sendBroadcast(broadcastIntent);
             stopSelf();
         }
         else if (Actions.StartLowPowerScanningMode.toString().equals(intent.getAction())){
@@ -112,6 +113,9 @@ public class BLE_ForegroundService extends Service {
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
+            Intent broadcastIntent = new Intent("ConnectionStatusChanged");
+            broadcastIntent.putExtra("ConnectionStatus", "disconnected");
+            sendBroadcast(broadcastIntent);
 
             startLowPowerScanning();
 
@@ -121,15 +125,14 @@ public class BLE_ForegroundService extends Service {
     }
 
     private void startForegroundNotification() {
-        NotificationChannel channel = new NotificationChannel("BLE_AUTOLOGOUT_SERVICE", "PennSkanvTicChannel", NotificationManager.IMPORTANCE_HIGH);
-        channel.setDescription("PennSkanvTic channel for foreground service notification");
+        NotificationChannel channel = new NotificationChannel("BLE_AUTOLOGOUT_SERVICE", "BLEAutologoutChannel", NotificationManager.IMPORTANCE_HIGH);
+        channel.setDescription("BLE Autologout Service");
 
         NotificationManager notificationManager = getSystemService(NotificationManager.class);
         notificationManager.createNotificationChannel(channel);
 
         Notification notification =
                 new NotificationCompat.Builder(this, "BLE_AUTOLOGOUT_SERVICE")
-                        .setContentText("Autologout Service")
                         .build();
         int type = ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE;
         ServiceCompat.startForeground(this,100, notification, type);
@@ -157,7 +160,7 @@ public class BLE_ForegroundService extends Service {
         scanner.startScan(filters, settings, scanCallback);
 
         Intent broadcastIntent = new Intent("ConnectionStatusChanged");
-        broadcastIntent.putExtra("ConnectionStatus", "Searching");
+        broadcastIntent.putExtra("ConnectionStatus", "searching...");
         sendBroadcast(broadcastIntent);
     }
 

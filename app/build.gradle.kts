@@ -8,7 +8,7 @@ android {
 
     defaultConfig {
         applicationId = "fb5.mo.ble_autologout_android"
-        minSdk = 26
+        minSdk = 33
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
