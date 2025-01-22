@@ -51,10 +51,11 @@ import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.google.android.material.navigation.NavigationView;
 
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Executor;
-import java.util.regex.Pattern;
+
+// Todo: make SharedPrefs Usage simpler
+// Todo: Settings Page and About Page missing
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
 
@@ -121,6 +122,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             @Override
             public void onClick(View view) {
                 StopBLEForegroundService();
+
                 stopServiceButton.setVisibility(View.INVISIBLE);
                 pairingButton.setVisibility(View.VISIBLE);
                 savedPCConnectButton.setVisibility(View.VISIBLE);
@@ -177,8 +179,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         // Auto-Start of BLE Service
         if (isOnePairedPcSaved()){
             savedPCConnectButton.setVisibility(View.VISIBLE);
+
             SharedPreferences sharedPrefs = getApplicationContext().getSharedPreferences("AUTOLOGOUT_APP", Context.MODE_PRIVATE);
             String SavedPCName = sharedPrefs.getString("SAVED_PC_NAME", null);
+
             if(SavedPCName != null){
                 savedPCConnectButton.setText("connect with: " + SavedPCName);
             }
@@ -195,6 +199,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         super.onDestroy();
         unregisterReceiver(ConnectionStatusReceiver);
         unregisterReceiver(RemoteRSSIReceiver);
+        StopBLEForegroundService();
     }
 
     // ------------------------------------------------------------------------------------
@@ -205,38 +210,38 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return SavedMacAdress != null;
     }
 
+    //Todo: nochmal genauer schauen, wie das mit den Messages ist die du vom Service bekommst
     public void StartBLEForegroundService(){
 
-            // View
             stopServiceButton.setVisibility(View.VISIBLE);
             pairingButton.setVisibility(View.INVISIBLE);
             savedPCConnectButton.setVisibility(View.INVISIBLE);
 
             Intent serviceIntent = new Intent(this, BLE_ForegroundService.class);
-            serviceIntent.setAction(BLE_ForegroundService.Actions.Start.toString());
+            serviceIntent.setAction(BLE_ForegroundService.Actions.StartService.toString());
             ContextCompat.startForegroundService(this, serviceIntent);
 
             ConnectionStatusReceiver = new BroadcastReceiver() {
                 @Override
                 public void onReceive(Context context, Intent intent) {
-                    // Get extra data included in the Intent
+
                     String message = intent.getStringExtra("ConnectionStatus");
                     switch (message){
-                        case "searching...":
+                        case "Searching":
                             statusTextView.setBackground(AppCompatResources.getDrawable(getApplicationContext(), R.drawable.rounded_badge_not_connected));
                             searchIndicatorProgressbar.setVisibility(View.VISIBLE);
                             circularBackground.setBackground(AppCompatResources.getDrawable(context, R.drawable.circle_background_grey));
                             notConnectedImageView.setVisibility(View.VISIBLE);
                             rangeDbTextView.setVisibility(View.INVISIBLE);
                             break;
-                        case "disconnected":
+                        case "Disconnected":
                             statusTextView.setBackground(AppCompatResources.getDrawable(getApplicationContext(), R.drawable.rounded_badge_not_connected));
                             searchIndicatorProgressbar.setVisibility(View.INVISIBLE);
                             circularBackground.setBackground(AppCompatResources.getDrawable(context, R.drawable.circle_background_grey));
                             notConnectedImageView.setVisibility(View.VISIBLE);
                             rangeDbTextView.setVisibility(View.INVISIBLE);
                             break;
-                        case "connected":
+                        case "Connected":
                             statusTextView.setBackground(AppCompatResources.getDrawable(getApplicationContext(), R.drawable.rounded_badge_connected));
                             searchIndicatorProgressbar.setVisibility(View.INVISIBLE);
                             circularBackground.setBackground(AppCompatResources.getDrawable(context, R.drawable.circle_background_blue));
@@ -251,7 +256,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             RemoteRSSIReceiver = new BroadcastReceiver() {
                 @Override
                 public void onReceive(Context context, Intent intent) {
-                    // Get extra data included in the Intent
+
                     int RSSI = intent.getIntExtra("RemoteRSSI", 0);
                     runOnUiThread(new Runnable() {
                         @Override
@@ -265,16 +270,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     public void StopBLEForegroundService(){
-        {
-            Intent serviceIntent = new Intent(this, BLE_ForegroundService.class);
-            serviceIntent.setAction(BLE_ForegroundService.Actions.Stop.toString());
-            ContextCompat.startForegroundService(this, serviceIntent);
-//            unregisterReceiver(ConnectionStatusReceiver);
-//            unregisterReceiver(RemoteRSSIReceiver);
-            stopServiceButton.setVisibility(View.INVISIBLE);
-            pairingButton.setVisibility(View.VISIBLE);
-            savedPCConnectButton.setVisibility(View.VISIBLE);
-        }
+    {
+        Intent serviceIntent = new Intent(this, BLE_ForegroundService.class);
+        serviceIntent.setAction(BLE_ForegroundService.Actions.StopService.toString());
+        ContextCompat.startForegroundService(this, serviceIntent);
+
+        stopServiceButton.setVisibility(View.INVISIBLE);
+        pairingButton.setVisibility(View.VISIBLE);
+        savedPCConnectButton.setVisibility(View.VISIBLE);
+        searchIndicatorProgressbar.setVisibility(View.INVISIBLE);
+    }
 
     }
 
@@ -302,19 +307,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     // ------------------------------- BLUETOOTH PAIRING PROCESS -----------------------------------------------
 
-    //    private BLEService bleService;
-    private static final String DISTANCE_SERVICE_UUID = "12345678-1234-1234-1234-123456789abc";
-
-    private static final int SELECT_DEVICE_REQUEST_CODE = 0;
-
-
     public void CompanionPairingProcess(){
         // The Companion Device Manager helps to find only Devices that match a filter.
-
-        // Devicefiltering for DISTANCE SERVICE
+        ParcelUuid DistanceServiceUUID = ParcelUuid.fromString( BLE_Manager.DISTANCE_SERVICE_UUID);
+        // Filters only for devices with having the distance service
         BluetoothLeDeviceFilter deviceFilter = new BluetoothLeDeviceFilter.Builder()
-                .setScanFilter(new ScanFilter.Builder().setServiceUuid(ParcelUuid.fromString(DISTANCE_SERVICE_UUID)
-                ).build())
+                .setScanFilter(new ScanFilter.Builder().setServiceUuid(DistanceServiceUUID).build())
                 .build();
 
         AssociationRequest pairingRequest = new AssociationRequest.Builder()
@@ -323,7 +321,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         CompanionDeviceManager deviceManager = (CompanionDeviceManager)getSystemService(COMPANION_DEVICE_SERVICE);
 
-        deviceManager.associate(pairingRequest,
+        deviceManager.associate(
+                pairingRequest,
                 new Executor() {
                     @Override
                     public void execute(Runnable runnable) {
@@ -336,7 +335,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         // Opens a Picklist with the DeviceFilter for Bluetooth Low Energy Devices
                         try {
                             startIntentSenderForResult(
-                                    chooserLauncher, SELECT_DEVICE_REQUEST_CODE, null, 0, 0, 0
+                                    chooserLauncher, 0/*SELECT DEVICE REQUEST CODE*/, null, 0, 0, 0
                             );
                         } catch (IntentSender.SendIntentException e) {
                             //
@@ -345,6 +344,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
                     @Override
                     public void onAssociationCreated(AssociationInfo associationInfo) {
+                        // retrieve mac address
                         int associationId = associationInfo.getId();
                         MacAddress macAddress = associationInfo.getDeviceMacAddress();
                         assert macAddress != null;
@@ -366,40 +366,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 });
     }
 
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        if (resultCode != Activity.RESULT_OK) {
-            return;
-        }
-        if (requestCode == SELECT_DEVICE_REQUEST_CODE && data != null) {
-            ScanResult scanResult =
-                    data.getParcelableExtra(CompanionDeviceManager.EXTRA_DEVICE);
-            if (scanResult != null) {
-                if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(
-                            this,
-                            new String[]{android.Manifest.permission.BLUETOOTH_CONNECT},
-                            1
-                    );
-                }
-
-//                BluetoothDevice device = scanResult.getDevice();
-//                if (device.getBondState() == BluetoothDevice.BOND_NONE){
-//                    device.createBond();
-//                }
-//                // Continue to interact with the paired device.
-//                boolean connected =  bleService.connect(device.getAddress());
-//                if (connected){
-//                    statusTextView.setText("connected");
-//                }
-
-            }
-        } else {
-            super.onActivityResult(requestCode, resultCode, data);
-        }
-    }
-
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
 //        switch (item.getItemId()) {
@@ -418,3 +384,35 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return true;
     }
 }
+
+//    @Override
+//    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+//        if (resultCode != Activity.RESULT_OK) {
+//            return;
+//        }
+//        if (requestCode == 0 /*SELECT_DEVICE_REQUEST_CODE*/ && data != null) {
+//            ScanResult scanResult = data.getParcelableExtra(CompanionDeviceManager.EXTRA_DEVICE);
+//            if (scanResult != null) {
+//                if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+//                    ActivityCompat.requestPermissions(
+//                            this,
+//                            new String[]{android.Manifest.permission.BLUETOOTH_CONNECT},
+//                            1
+//                    );
+//                }
+//
+////                BluetoothDevice device = scanResult.getDevice();
+////                if (device.getBondState() == BluetoothDevice.BOND_NONE){
+////                    device.createBond();
+////                }
+////                // Continue to interact with the paired device.
+////                boolean connected =  bleService.connect(device.getAddress());
+////                if (connected){
+////                    statusTextView.setText("connected");
+////                }
+//
+//            }
+//        } else {
+//            super.onActivityResult(requestCode, resultCode, data);
+//        }
+//    }
