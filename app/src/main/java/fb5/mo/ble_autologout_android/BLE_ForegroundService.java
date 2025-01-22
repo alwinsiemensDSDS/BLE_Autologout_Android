@@ -37,6 +37,7 @@ public class BLE_ForegroundService extends Service {
     boolean stopping = false;
 
     public enum Actions {
+        StartSilentService,
         StartService,
         StopService,
         StartScanning,
@@ -157,6 +158,10 @@ public class BLE_ForegroundService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // START SILENT SERVICE
+        if (Actions.StartSilentService.toString().equals(intent.getAction())){
+            startForegroundNotification();
+        }
         // START SERVICE
         if (Actions.StartService.toString().equals(intent.getAction())){
             startForegroundNotification();

@@ -2,4 +2,12 @@
     <string name="app_name">BLE Autologout</string>
     <string name="navigation_drawer_open">Open Navigation Drawer</string>
     <string name="navigation_drawer_close">Close Navigation Drawer</string>
+    <string name="title_activity_settings">SettingsActivity</string>
+
+    <!-- Preference Titles -->
+    <string name="services_header">Service Settings</string>
+    <string name="services_automatic_mode">Auto-Modus</string>
+
+
+    <!-- Sync Preferences -->
 </resources>

@@ -32,6 +32,7 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
@@ -48,6 +49,8 @@ import androidx.core.view.GravityCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.preference.Preference;
+import androidx.preference.PreferenceManager;
 
 import com.google.android.material.navigation.NavigationView;
 
@@ -76,6 +79,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     BroadcastReceiver ConnectionStatusReceiver;
     BroadcastReceiver RemoteRSSIReceiver;
+
+    final static int REQUEST_POST_NOTIFICATIONS = 15;
+    final static int REQUEST_BLE_FOREGROUND_PERMISSIONS = 16;
+    final static int REQUEST_BLUETOOTH_CONNECT = 17;
+    final static int CLICKED_COMPANION_BLUETOOTH_DEVICE = 18;
 
 
     private void initViewElements(){
@@ -106,6 +114,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         circularBackground.setBackground(AppCompatResources.getDrawable(this, R.drawable.circle_background_grey));
         notConnectedImageView.setVisibility(View.VISIBLE);
         rangeDbTextView.setVisibility(View.INVISIBLE);
+        searchIndicatorProgressbar.setVisibility(View.INVISIBLE);
 
         // Statustext init
         statusTextView.setBackground(AppCompatResources.getDrawable(this, R.drawable.rounded_badge_not_connected));
@@ -118,6 +127,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
         });
 
+        stopServiceButton.setVisibility(View.INVISIBLE);
         stopServiceButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -140,12 +150,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         savedPCConnectButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (!isServiceRunningInForeground(view.getContext(), BLE_ForegroundService.class)){
                     StartBLEForegroundService();
-                }
-
             }
         });
+
+        Intent serviceIntent = new Intent(this, BLE_ForegroundService.class);
+        serviceIntent.setAction(BLE_ForegroundService.Actions.StartSilentService.toString());
+        ContextCompat.startForegroundService(this, serviceIntent);
     }
 
 
@@ -172,10 +183,23 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         initViewElements();
 
-        ActivityCompat.requestPermissions(this,
-                new String[]{Manifest.permission.BLUETOOTH_SCAN},
-                1);
+        if(!checkPermissions()){
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.POST_NOTIFICATIONS},
+                    REQUEST_BLE_FOREGROUND_PERMISSIONS);
+            Toast.makeText(this, "Please restart the App please.", Toast.LENGTH_LONG);
+        }else {
+                autostart_service();
+        }
+    }
 
+    public boolean isAutoModeSet(){
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+        boolean automode_is_set  = sharedPreferences.getBoolean("service_auto_mode", false);
+        return automode_is_set;
+    }
+
+    public void autostart_service(){
         // Auto-Start of BLE Service
         if (isOnePairedPcSaved()){
             savedPCConnectButton.setVisibility(View.VISIBLE);
@@ -187,18 +211,40 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 savedPCConnectButton.setText("connect with: " + SavedPCName);
             }
             if (!isServiceRunningInForeground(this, BLE_ForegroundService.class)) {
-                StartBLEForegroundService();
+                if (isAutoModeSet()){
+                    StartBLEForegroundService();
+                }
+
             }
 
         }
+    }
 
+    public boolean checkPermissions() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+            return false;
+        }
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            return false;
+        }
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            return false;
+        }
+        return true;
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        unregisterReceiver(ConnectionStatusReceiver);
-        unregisterReceiver(RemoteRSSIReceiver);
+        try {
+            unregisterReceiver(ConnectionStatusReceiver);
+            unregisterReceiver(RemoteRSSIReceiver);
+        }
+        catch (IllegalArgumentException e){
+            // receiver were not registered
+        }
         StopBLEForegroundService();
     }
 
@@ -298,12 +344,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     // ------------------------------- Permissions -----------------------------------------------
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-        //Handle Permission Selection
-    }
 
     // ------------------------------- BLUETOOTH PAIRING PROCESS -----------------------------------------------
 
@@ -335,7 +375,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         // Opens a Picklist with the DeviceFilter for Bluetooth Low Energy Devices
                         try {
                             startIntentSenderForResult(
-                                    chooserLauncher, 0/*SELECT DEVICE REQUEST CODE*/, null, 0, 0, 0
+                                    chooserLauncher, CLICKED_COMPANION_BLUETOOTH_DEVICE/*SELECT DEVICE REQUEST CODE*/, null, 0, 0, 0
                             );
                         } catch (IntentSender.SendIntentException e) {
                             //
@@ -368,20 +408,51 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-//        switch (item.getItemId()) {
-//            case R.id.nav_home:
-//                // Handle "Home" action
-//                break;
-//            case R.id.nav_settings:
-//                // Handle "Settings" action
-//                break;
-//            case R.id.nav_about:
-//                // Handle "About" action
-//                break;
-//        }
+
+        final int navSettings = R.id.nav_settings; //1000000
+        final int navAbout = R.id.nav_about; //1000006
+
+        switch (item.getTitle().toString()) {
+            case "Settings":
+                // Handle "Settings" action
+                Intent settings_intent = new Intent(this,  SettingsActivity.class);
+                startActivity(settings_intent);
+                break;
+            case "About":
+                // Handle "About" action
+                Intent about_intent = new Intent(this,  AboutActivity.class);
+                startActivity(about_intent);
+                break;
+        }
 
         drawerLayout.closeDrawer(GravityCompat.START);
         return true;
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == CLICKED_COMPANION_BLUETOOTH_DEVICE && data != null) {
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "Permission Denied.", Toast.LENGTH_LONG);
+                return;
+            }
+            ScanResult scanResult = data.getParcelableExtra(CompanionDeviceManager.EXTRA_DEVICE);
+
+            BluetoothDevice device = scanResult.getDevice();
+            // save in SharedPrefs
+            Context context = getApplicationContext();
+            SharedPreferences sharedPrefs = context.getSharedPreferences("AUTOLOGOUT_APP",Context.MODE_PRIVATE);
+            sharedPrefs.edit().putString("SAVED_PC_MACADRESS", device.getAddress().toString().toUpperCase()).apply();
+            sharedPrefs.edit().putString("SAVED_PC_NAME", device.getName().toString().toUpperCase()).apply();
+
+            savedPCConnectButton.setVisibility(View.VISIBLE);
+
+            savedPCConnectButton.setText("connect with: " + device.getName());
+        } else {
+            super.onActivityResult(requestCode, resultCode, data);
+        }
     }
 }
 

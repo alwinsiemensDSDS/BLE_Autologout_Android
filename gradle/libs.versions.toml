@@ -9,6 +9,7 @@ activity = "1.9.3"
 constraintlayout = "2.2.0"
 ble = "2.9.0"
 scanner = "1.6.0"
+preference = "1.2.1"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -20,6 +21,7 @@ activity = { group = "androidx.activity", name = "activity", version.ref = "acti
 constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 ble = { group = "no.nordicsemi.android", name = "ble", version.ref = "ble" }
 scanner = { group = "no.nordicsemi.android.support.v18", name = "scanner", version.ref = "scanner" }
+preference = { group = "androidx.preference", name = "preference", version.ref = "preference" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
